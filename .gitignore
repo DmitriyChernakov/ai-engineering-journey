@@ -1,0 +1,30 @@
+# Virtual Environment
+venv/
+venv/*
+env/
+env/*
+ENV/
+ENV/*
+
+# DB files
+*.db
+
+# Configuration files
+#*.env
+*.conf
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+
+# Logs
+*.log
+logs/
+
+# IDE
+.idea/
+.idea/*
+*.swp
+*.swo
