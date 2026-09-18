@@ -12,6 +12,7 @@ ENV/*
 # Configuration files
 #*.env
 *.conf
+*.env
 
 # Python cache
 __pycache__/
