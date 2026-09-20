@@ -10,7 +10,6 @@ ENV/*
 *.db
 
 # Configuration files
-#*.env
 *.conf
 *.env
 
@@ -29,3 +28,7 @@ logs/
 .idea/*
 *.swp
 *.swo
+
+# json
+*output.json
+test_cases_*.json
