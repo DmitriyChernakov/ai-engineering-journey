@@ -1,7 +1,7 @@
 # QA Buddy v2 — AI-агент для генерации тест-кейсов
 
 ## Что это
-CLI-инструмент, который принимает описание фичи и генерирует тест-кейсы с использованием LangGraph, инструментов и облачной LLM.
+AI-агент для автоматической генерации тест-кейсов из описания фичи.
 
 ## Стек
 - LangGraph (StateGraph + ToolNode)
@@ -9,8 +9,11 @@ CLI-инструмент, который принимает описание ф�
 - Langfuse (observability)
 - Python 3.14+
 
-## Архитектура
-[Схема: User Input → Agent → Tools (read_file, save) → Test Cases → Langfuse]
+## Как работает
+Агент использует 3 инструмента:
+1. `read_file` — читает описание фичи из `.txt` файла
+2. `save_test_cases` — валидирует и сохраняет JSON с тест-кейсами
+3. `count_test_cases` — считает статистику (positive/negative/edge_case)
 
 ## Как запустить
 1. Установить зависимости: `pip install -r requirements.txt`
