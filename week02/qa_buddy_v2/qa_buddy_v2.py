@@ -1,18 +1,15 @@
 import json
 import operator
-import re
 import uuid
 from typing import TypedDict, Annotated
 
-from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import tool
-from langchain_ollama import ChatOllama
 from langfuse.langchain import CallbackHandler
 from langgraph.graph import StateGraph, START
 from langgraph.prebuilt import ToolNode, tools_condition
 
-load_dotenv()
+from week02.qa_buddy_v2.llm_client import get_llm
 
 
 # ============ ИНСТРУМЕНТЫ ============
@@ -27,6 +24,26 @@ def read_file(filepath: str) -> str:
         return f"ОШИБКА: Файл '{filepath}' не найден. Проверь путь."
     except Exception as e:
         return f"ОШИБКА при чтении файла: {e}"
+
+
+@tool
+def save_test_cases(filename: str, content: str) -> str:
+    """Сохраняет тест-кейсы в JSON-файл. Перед сохранением проверяет формат."""
+    try:
+        data = json.loads(content)
+        if "test_cases" not in data:
+            return "ОШИБКА: В данных нет ключа 'test_cases'. Сгенерируй тест-кейсы заново."
+        if not isinstance(data["test_cases"], list) or len(data["test_cases"]) == 0:
+            return "ОШИБКА: 'test_cases' должен быть непустым списком."
+    except json.JSONDecodeError:
+        return "ОШИБКА: Невалидный JSON. Сгенерируй тест-кейсы заново в правильном формате."
+
+    try:
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        return f"УСПЕХ: Тест-кейсы сохранены в '{filename}'"
+    except Exception as e:
+        return f"ОШИБКА при сохранении файла: {e}"
 
 
 @tool
@@ -84,8 +101,8 @@ SYSTEM_PROMPT = """Ты — опытный AI QA-инженер с 10-летни
 
 # ============ ГРАФ ============
 
-tools = [read_file, count_test_cases]
-llm = ChatOllama(model="qwen2.5:7b").bind_tools(tools)
+tools = [read_file, save_test_cases, count_test_cases]
+llm = get_llm().bind_tools(tools)
 
 
 class State(TypedDict):
@@ -107,31 +124,6 @@ graph.add_edge("tools", "agent")
 app = graph.compile()
 
 
-# ============ ИЗВЛЕЧЕНИЕ JSON ИЗ ТЕКСТА ============
-
-def extract_json_from_text(text: str) -> dict | None:
-    """Извлекает JSON-блок из текста ответа модели."""
-    # Ищем блок ```json ... ```
-    json_match = re.search(r'```json\s*(.*?)\s*```', text, re.DOTALL)
-    if json_match:
-        json_str = json_match.group(1)
-        try:
-            return json.loads(json_str)
-        except json.JSONDecodeError:
-            pass
-
-    # Ищем любой блок { ... }
-    brace_match = re.search(r'\{.*\}', text, re.DOTALL)
-    if brace_match:
-        json_str = brace_match.group(0)
-        try:
-            return json.loads(json_str)
-        except json.JSONDecodeError:
-            pass
-
-    return None
-
-
 # ============ ЗАПУСК ============
 
 def run_qa_buddy(user_request: str, session_name: str, max_iterations: int = 10):
@@ -151,28 +143,7 @@ def run_qa_buddy(user_request: str, session_name: str, max_iterations: int = 10)
         }
     )
 
-    # ОТЛАДКА: смотрим всю историю сообщений
-    print("\n" + "=" * 60)
-    print("ОТЛАДКА: все сообщения в графе")
-    print("=" * 60)
-    for i, msg in enumerate(result["messages"]):
-        content_preview = repr(msg.content[:150]) if msg.content else "EMPTY"
-        print(f"[{i}] {msg.__class__.__name__}: {content_preview}")
-        if hasattr(msg, "tool_calls") and msg.tool_calls:
-            names = [tc["name"] for tc in msg.tool_calls]
-            print(f"    → вызвал инструменты: {names}")
-
     return result["messages"][-1].content
-
-
-def save_test_cases_to_file(test_cases: dict, filename: str) -> str:
-    """Сохраняет тест-кейсы в файл (отдельная функция, не инструмент)."""
-    try:
-        with open(filename, 'w', encoding='utf-8') as f:
-            json.dump(test_cases, f, indent=2, ensure_ascii=False)
-        return f"УСПЕХ: Тест-кейсы сохранены в '{filename}'"
-    except Exception as e:
-        return f"Ошибка при сохранении: {e}"
 
 
 if __name__ == "__main__":
@@ -194,15 +165,6 @@ if __name__ == "__main__":
     print("ФИНАЛЬНЫЙ ОТВЕТ АГЕНТА:")
     print("=" * 60)
     print(final_answer)
-
-    # ИЗВЛЕКАЕМ И СОХРАНЯЕМ ТЕСТ-КЕЙСЫ
-    test_cases = extract_json_from_text(final_answer)
-    if test_cases:
-        save_message = save_test_cases_to_file(test_cases, "test_cases_output.json")
-        print("\n" + save_message)
-    else:
-        print("Не удалось извлечь JSON из ответа агента")
-        print("Проверь трассировку langfuse")
 
     # Даём время на отправку данных в Langfuse
     import time
