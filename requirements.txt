@@ -6,3 +6,4 @@ langfuse==4.15.4
 numpy==2.5.2
 openai==3.35.1
 python-dotenv==1.2.3
+llama-index-core==0.14.25
