@@ -5,3 +5,4 @@
 ## Структура
 - `week01/` — Локальные LLM + Prompt Engineering
 - `week02/` — Первый AI-агент на LangGraph
+- `week03/` — Первый AI-агент с RAG
