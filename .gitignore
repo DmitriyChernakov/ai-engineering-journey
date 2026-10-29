@@ -32,3 +32,6 @@ logs/
 # json
 *output.json
 test_cases_*.json
+
+# tmp
+tmp*.py
